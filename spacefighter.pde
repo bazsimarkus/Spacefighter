@@ -1,17 +1,22 @@
-import gifAnimation.*;
-import controlP5.*;
+/*
+ * Spacefighter
+ * This is a 8-bit style PC/Android game inspired by the classic game Asteroids, written in Processing 3. 
+ */
 
-ControlP5 cp5;
+//gifAnimation library by extrapixel - for the animated spaceship GIF import - if we replace the spacheship with a static image file, this library can be neglected
+import gifAnimation.*;
 
 PFont Pixellari18, Pixellari24, Pixellari36, Pixellari48, Pixellari56;
 PImage asteroidSprite;
 PImage spaceshipSprite;
 PImage restartButton;
 
+// some globals
 int score = 0;
 boolean dead = false;
 boolean rectOver = false;
 
+// bullet class, the spaceship shoots it
 class Bullet {
   float x;
   float y;
@@ -21,7 +26,6 @@ class Bullet {
 
   Bullet() {
     y  = mouseY+39;
-    //x  = random(width+50, width+500);
     x  = 135+0.05*mouseX;
     z  = 10;
     len = map(z, 0, 20, 10, 20);
@@ -39,21 +43,21 @@ class Bullet {
   }
 
   void show() {
-    float thick = map(z, 0, 20, 1, 3);
     strokeWeight(6);
     stroke(77, 188, 233);
     line(x, y, x+len, y);
   }
 }
 
-class Drop {
+// for the background star animation, we create little droplet-like objects, which move from the right side of the screen to the left, thus creating a dynamic effect
+class Star {
   float x;
   float y;
   float z;
   float len;
   float xspeed;
 
-  Drop() {
+  Star() {
     x  = width;
     y  = random(height);
     z  = random(0, 20);
@@ -66,6 +70,7 @@ class Drop {
     float grav = map(z, 0, 20, 0, 0.2);
     xspeed = xspeed + grav;
 
+    //if the stars run out of the screen, we move them back to the right side
     if (x < 0) {
       x = width;
       xspeed = map(z, 0, 20, 4, 10);
@@ -80,6 +85,8 @@ class Drop {
   }
 }
 
+
+// enemy class
 class Asteroid {
   float x;
   float y;
@@ -100,11 +107,6 @@ class Asteroid {
     x = x - xspeed/10;
     float grav = map(z, 0, 20, 0, 0.2);
     xspeed = xspeed + grav;
-
-    if (x < 0) {
-      x = width;
-      xspeed = map(z, 0, 20, 4, 10);
-    }
   }
 
   void show() {
@@ -112,7 +114,8 @@ class Asteroid {
   }
 }
 
-Drop[] drops = new Drop[40];
+// the elements on the screen
+Star[] stars = new Star[40];
 Bullet[] bullets = new Bullet[20];
 Asteroid[] asteroids = new Asteroid[5];
 
@@ -120,21 +123,18 @@ int bulletnum = 0;
 
 void settings() {
   size(displayWidth, displayHeight);
+  fullScreen();
 }
 
 Gif myAnimation; 
 
-void setup() {
-  fullScreen();
-
+void setup() {  
   Pixellari18 = createFont("Pixellari.ttf", 18);
   Pixellari24 = createFont("Pixellari.ttf", 24);
   Pixellari36 = createFont("Pixellari.ttf", 36); 
   Pixellari48 = createFont("Pixellari.ttf", 48);
   Pixellari56 = createFont("Pixellari.ttf", 56);
   textFont(Pixellari24);
-
-  cp5 = new ControlP5(this);
 
   myAnimation = new Gif(this, "spaceship1.gif");  
   myAnimation.play();
@@ -154,18 +154,19 @@ void draw() {
     fill(255);
     textFont(Pixellari24);
     text(bulletnum, 40, 40);
-    text("Pontszám:", width-180, 40);
+    text("Score:", width-180, 40);
     text(score, width-40, 40);
     stroke(255);
     fill(0, 0, 0);
     image(myAnimation, 10 + 0.05*mouseX, mouseY);
-    // image(spaceshipSprite, 50, mouseY, spaceshipSprite.width/1, spaceshipSprite.height/1);
-    // quad(50, mouseY + 0, 100,mouseY + 20, 50,mouseY + 40, 70,mouseY + 20);
-    for (int i = 0; i < drops.length; i++) {
-      drops[i].move();
-      drops[i].show();
+    
+    // move the stars in the background
+    for (int i = 0; i < stars.length; i++) {
+      stars[i].move();
+      stars[i].show();
     }
 
+    // move the asteroids
     for (int i = 0; i < asteroids.length; i++) {
       if (asteroids[i].alive==true) { 
         asteroids[i].move();
@@ -173,32 +174,29 @@ void draw() {
       }
     }
 
-    for (int i = 0; i < bulletnum; i++) {
-
+    //decrease the bullet number if a bullet leaves the screen
+     for (int i = 0; i < bulletnum; i++) {
       if (bullets[i].x>width) {
         bulletnum = bulletnum-1;
-        //   bullets[i] = new Bullet();
         for (int j = 0; j < bullets.length-1; j++) {
           bullets[j]=bullets[j+1];
         }
-        //  bullets[i].x = 50;
       }
     }
+    
+    //move the bullets
     for (int i = 0; i < bulletnum; i++) {
-
       bullets[i].move();
       bullets[i].show();
     }
 
-
-    //collision check of asteroid and bullet
+    //collision check of asteroid and bullet, if the bullet hits an asteroid, we remove it, and generate a new one on the right side of the screen
     for (int i = 0; i < asteroids.length; i++) {
       for (int j = 0; j < bulletnum; j++) {
         if (
           bullets[j].x > asteroids[i].x &&
           bullets[j].y < (asteroids[i].y+95) &&
-          bullets[j].y > asteroids[i].y) { //collision vizsgálat az aszteroida és a lövedékek között, végigpörgetem mindkét osztály ciklusait
-          //    asteroids[i].alive=false; 
+          bullets[j].y > asteroids[i].y) { //iterate over both
           bullets[j]= new Bullet();
           bulletnum=bulletnum-1;
           asteroids[i] = new Asteroid();
@@ -210,7 +208,7 @@ void draw() {
     //game over
     for (int i = 0; i < asteroids.length; i++) {
       if (asteroids[i].x < 5 ||
-        ((asteroids[i].x <135) && (asteroids[i].y > mouseY) && (asteroids[i].y < mouseY + 125))) { //collision vizsgálat az aszteroida és a lövedékek között, végigpörgetem mindkét osztály ciklusait
+        ((asteroids[i].x <135) && (asteroids[i].y > mouseY) && (asteroids[i].y < mouseY + 125))) { //collision check
         dead = true;
       }
     }
@@ -219,19 +217,18 @@ void draw() {
     background(0, 0, 0);
     fill(255);
     image(restartButton, width/4-200, height/2-200, 400, 400);
-    // rect(20,20,40,40);
-    // change the trigger event, by default it is PRESSED.
+    
     textFont(Pixellari56);
     text("Game Over", 3*width/4-200, 100);
 
     textFont(Pixellari24);
-    text("Az elért pontjaid száma: ", 3*width/4-200, 200);
+    text("Your score: ", 3*width/4-200, 200);
     textFont(Pixellari56);
     text(score, 3*width/4-200, 250);
 
     textFont(Pixellari36);
-    text("Nyomd meg a gombot", 3*width/4-200, 400);
-    text("a játék újraindításához", 3*width/4-200, 450);
+    text("Press the big button", 3*width/4-200, 400);
+    text("to start a new game", 3*width/4-200, 450);
   }
 }
 
@@ -246,8 +243,8 @@ boolean overRect(int x, int y, int width, int height) {
 
 void setObjects() {
   score = 0;
-  for (int i = 0; i < drops.length; i++) {
-    drops[i] = new Drop();
+  for (int i = 0; i < stars.length; i++) {
+    stars[i] = new Star();
   }
   for (int i = 0; i < bullets.length; i++) {
     bullets[i] = new Bullet();
@@ -257,18 +254,16 @@ void setObjects() {
   }
 };
 
-void mouseClicked() { // az egergomb lenyomasakor lefuto fuggveny
+void mouseClicked() { // runs when mouse clicked
   if (dead == false) { 
-    if (bulletnum<9) { //egyszerre csak 9 bullet lehet a palyan hogy ne legyen sorozatklikkeles
+    if (bulletnum<9) { //only 9 bullets on the screen at once
       bulletnum = bulletnum + 1;
       bullets[bulletnum]= new Bullet();
-      bullets[bulletnum-1].y=mouseY+39; //mindig az elozore kell ugrani mert valamiert a kovetezo loves kapta csak meg az eger adatat
-      // bullets[bulletnum].x=100;
+      bullets[bulletnum-1].y=mouseY+39; //jump back to give the command to the right bullet
     }
   }
   if (rectOver & dead == true) {
     dead = false;
     setObjects();
   }
-  // bullets[bulletnum] = new Bullet();
 }
